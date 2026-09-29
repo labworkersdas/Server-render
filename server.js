@@ -11,9 +11,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(__dirname, 'hls');
-const SOURCE_URL =
-  process.env.SOURCE_URL ||
-  'http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts';
+// set SOURCE_URL as an environment variable; it is never logged or served
+const SOURCE_URL = process.env.SOURCE_URL || '';
 const AUTO_START = process.env.AUTO_START !== 'false';
 const AUTO_RESTART = process.env.AUTO_RESTART !== 'false';
 const HLS_TIME = process.env.HLS_TIME || '10';
@@ -79,6 +78,10 @@ function buildArgs() {
 }
 
 function start(trigger = 'manual') {
+  if (!SOURCE_URL) {
+    console.error('[hls] SOURCE_URL is not set');
+    return { started: false, reason: 'SOURCE_URL is not set' };
+  }
   if (isRunning()) {
     return { started: false, reason: 'already running', pid: proc.pid };
   }
@@ -151,15 +154,14 @@ function playlistState() {
 app.get('/', (req, res) => {
   const st = playlistState();
   res.type('html').send(`<!doctype html><meta charset="utf-8">
-<title>FFmpeg HLS</title>
+<title>HLS</title>
 <style>body{font:14px/1.6 monospace;background:#111;color:#eee;padding:24px}
-a{color:#6cf}code{background:#222;padding:2px 5px;border-radius:3px}</style>
-<h1>FFmpeg HLS server</h1>
+a{color:#6cf}</style>
+<h1>HLS</h1>
 <p>status: <b>${isRunning() ? 'transcoding' : 'stopped'}</b></p>
 <p>playlist: <b>${st.ready ? 'ready' : st.reason}</b>${
     st.ready ? ` (${st.segments} segments)` : ''
   }</p>
-<p>source: <code>${SOURCE_URL}</code></p>
 <ul>
   <li><a href="/playlist.m3u8">/playlist.m3u8</a></li>
   <li><a href="/status">/status</a> (JSON)</li>
@@ -174,7 +176,6 @@ app.get('/status', (req, res) => {
     pid: isRunning() ? proc.pid : null,
     uptimeMs: startedAt ? Date.now() - startedAt : null,
     restarts,
-    source: SOURCE_URL,
     outputDir: OUTPUT_DIR,
     playlist: playlistState(),
     lastLog,
@@ -194,12 +195,7 @@ app.get('/playlist.m3u8', (req, res) => {
   const st = playlistState();
   if (!st.ready) {
     res.set('Retry-After', '2');
-    return res.status(503).type('text/plain').send(
-      `playlist not ready: ${st.reason}\n` +
-        `ffmpeg running: ${isRunning()}\n` +
-        `The first segment takes about ${HLS_TIME}s of video to encode.\n` +
-        `Check /status for logs, or hit /start.`
-    );
+    return res.status(503).type('text/plain').send('not ready');
   }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.type('application/vnd.apple.mpegurl');
@@ -222,7 +218,7 @@ app.use(
 );
 
 app.use((req, res) => {
-  res.status(404).type('text/plain').send(`Cannot GET ${req.path}\nRoutes: / /start /stop /status /playlist.m3u8`);
+  res.status(404).type('text/plain').send('not found');
 });
 
 // ---------- boot ----------
@@ -230,7 +226,7 @@ app.listen(PORT, HOST, () => {
   console.log(`[hls] FFmpeg HLS server running on port ${PORT}`);
   console.log(`[hls] output dir: ${OUTPUT_DIR}`);
   console.log(`[hls] playlist URL: http://${HOST}:${PORT}/playlist.m3u8`);
-  if (AUTO_START) {
+  if (AUTO_START && SOURCE_URL) {
     setTimeout(() => start('boot'), 1500);
   }
 });
