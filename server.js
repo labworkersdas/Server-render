@@ -15,7 +15,7 @@ const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(__dirname, 'hls');
 // in any HTTP response. override it with the SOURCE_URL env var.
 const SOURCE_URL =
   process.env.SOURCE_URL ||
-  'http://line.candycloudlion.top/34610a08/5a54c0c6/577430.ts';
+  'http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts';
 const AUTO_START = process.env.AUTO_START !== 'false';
 const AUTO_RESTART = process.env.AUTO_RESTART !== 'false';
 const HLS_TIME = process.env.HLS_TIME || '10';
@@ -25,6 +25,7 @@ const SIZE = process.env.SIZE || '720x576';
 const FPS = process.env.FPS || '25';
 const CRF = process.env.CRF || '22';
 const GOP = process.env.GOP || '50';
+const TRANSCODE = process.env.TRANSCODE === '1';
 const PLAYLIST = path.join(OUTPUT_DIR, 'playlist.m3u8');
 
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -52,19 +53,29 @@ function buildArgs() {
       '-reconnect_delay_max', '5'
     );
   }
+  args.push('-i', SOURCE_URL);
+
+  // remux only: the source is already h264 + aac, so re-encoding is what
+  // was preventing realtime. set TRANSCODE=1 to re-encode instead.
+  if (TRANSCODE) {
+    args.push(
+      '-vf', `scale=${SIZE}`,
+      '-r', FPS,
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-crf', CRF,
+      '-pix_fmt', 'yuv420p',
+      '-g', GOP,
+      '-keyint_min', GOP,
+      '-sc_threshold', '0',
+      '-c:a', 'aac',
+      '-b:a', '128k'
+    );
+  } else {
+    args.push('-c', 'copy');
+  }
+
   args.push(
-    '-i', SOURCE_URL,
-    '-vf', `scale=${SIZE}`,
-    '-r', FPS,
-    '-c:v', 'libx264',
-    '-preset', 'ultrafast',
-    '-crf', CRF,
-    '-pix_fmt', 'yuv420p',
-    '-g', GOP,
-    '-keyint_min', GOP,
-    '-sc_threshold', '0',
-    '-c:a', 'aac',
-    '-b:a', '128k',
     '-f', 'hls',
     '-hls_time', HLS_TIME,
     '-hls_list_size', HLS_LIST_SIZE,
