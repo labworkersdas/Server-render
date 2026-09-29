@@ -11,8 +11,11 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(__dirname, 'hls');
-// set SOURCE_URL as an environment variable; it is never logged or served
-const SOURCE_URL = process.env.SOURCE_URL || '';
+// the source is used by ffmpeg only. it is never logged and never served
+// in any HTTP response. override it with the SOURCE_URL env var.
+const SOURCE_URL =
+  process.env.SOURCE_URL ||
+  'http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts';
 const AUTO_START = process.env.AUTO_START !== 'false';
 const AUTO_RESTART = process.env.AUTO_RESTART !== 'false';
 const HLS_TIME = process.env.HLS_TIME || '10';
@@ -35,7 +38,7 @@ function isRunning() {
 }
 
 function buildArgs() {
-  const args = ['-hide_banner', '-loglevel', 'warning'];
+  const args = ['-hide_banner', '-loglevel', process.env.FFMPEG_LOGLEVEL || 'info'];
   // reconnect flags are only valid for http(s) inputs
   if (/^https?:/i.test(SOURCE_URL)) {
     args.push(
@@ -223,7 +226,9 @@ app.listen(PORT, HOST, () => {
   console.log(`[hls] FFmpeg HLS server running on port ${PORT}`);
   console.log(`[hls] output dir: ${OUTPUT_DIR}`);
   console.log(`[hls] playlist URL: http://${HOST}:${PORT}/playlist.m3u8`);
-  if (AUTO_START && SOURCE_URL) {
+  console.log(`[hls] auto_start=${AUTO_START} auto_restart=${AUTO_RESTART}`);
+  console.log(`[hls] SOURCE_URL is ${SOURCE_URL ? 'set' : 'MISSING'}`);
+  if (AUTO_START) {
     setTimeout(() => start('boot'), 1500);
   }
 });
