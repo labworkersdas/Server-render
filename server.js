@@ -15,13 +15,16 @@ const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(__dirname, 'hls');
 // in any HTTP response. override it with the SOURCE_URL env var.
 const SOURCE_URL =
   process.env.SOURCE_URL ||
-  'http://line.candycloudlion.top/34610a08/5a54c0c6/577430.ts';
+  'http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts';
 const AUTO_START = process.env.AUTO_START !== 'false';
 const AUTO_RESTART = process.env.AUTO_RESTART !== 'false';
 const HLS_TIME = process.env.HLS_TIME || '10';
 const HLS_LIST_SIZE = process.env.HLS_LIST_SIZE || '6';
-const PRESET = process.env.PRESET || 'fast';
-const DEINTERLACE = process.env.YADIF === '1';
+// 576i/SD at 25fps. ultrafast keeps this realtime on slow shared CPU.
+const SIZE = process.env.SIZE || '720x576';
+const FPS = process.env.FPS || '25';
+const CRF = process.env.CRF || '22';
+const GOP = process.env.GOP || '50';
 const PLAYLIST = path.join(OUTPUT_DIR, 'playlist.m3u8');
 
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -49,24 +52,16 @@ function buildArgs() {
       '-reconnect_delay_max', '5'
     );
   }
-  // interlaced (tff) output, no deinterlacing.
-  // set YADIF=1 to deinterlace instead.
-  const vf = DEINTERLACE
-    ? 'yadif=1:-1:0,setfield=tff,format=yuv420p'
-    : 'setfield=tff,format=yuv420p';
-
   args.push(
     '-i', SOURCE_URL,
-    '-vf', vf,
-    '-flags', '+ilme+ildct',
-    '-r', '30000/1001',
-    '-s', '720x576',
+    '-vf', `scale=${SIZE}`,
+    '-r', FPS,
     '-c:v', 'libx264',
-    '-preset', PRESET,
-    '-crf', '20',
+    '-preset', 'ultrafast',
+    '-crf', CRF,
     '-pix_fmt', 'yuv420p',
-    '-g', '50',
-    '-keyint_min', '50',
+    '-g', GOP,
+    '-keyint_min', GOP,
     '-sc_threshold', '0',
     '-c:a', 'aac',
     '-b:a', '128k',
