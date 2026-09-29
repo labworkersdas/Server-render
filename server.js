@@ -8,8 +8,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/start', (req, res) => {
-  const cmd = `ffmpeg -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
-    -i "http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts" \
+  const cmd = `ffmpeg -i "http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts" \
     -vf "yadif=1:-1:0,format=yuv420p" \
     -flags +ilme+ildct \
     -top 1 \
