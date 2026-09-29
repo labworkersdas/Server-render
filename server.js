@@ -15,7 +15,7 @@ const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(__dirname, 'hls');
 // in any HTTP response. override it with the SOURCE_URL env var.
 const SOURCE_URL =
   process.env.SOURCE_URL ||
-  'http://line.candycloudlion.top/34610a08/5a54c0c6/577445.ts';
+  'http://line.candycloudlion.top/34610a08/5a54c0c6/577430.ts';
 const AUTO_START = process.env.AUTO_START !== 'false';
 const AUTO_RESTART = process.env.AUTO_RESTART !== 'false';
 const HLS_TIME = process.env.HLS_TIME || '10';
