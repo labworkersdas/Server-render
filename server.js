@@ -152,41 +152,38 @@ function playlistState() {
 
 // ---------- routes ----------
 app.get('/', (req, res) => {
-  const st = playlistState();
-  res.type('html').send(`<!doctype html><meta charset="utf-8">
-<title>HLS</title>
-<style>body{font:14px/1.6 monospace;background:#111;color:#eee;padding:24px}
-a{color:#6cf}</style>
-<h1>HLS</h1>
-<p>status: <b>${isRunning() ? 'transcoding' : 'stopped'}</b></p>
-<p>playlist: <b>${st.ready ? 'ready' : st.reason}</b>${
-    st.ready ? ` (${st.segments} segments)` : ''
-  }</p>
-<ul>
-  <li><a href="/playlist.m3u8">/playlist.m3u8</a></li>
-  <li><a href="/status">/status</a> (JSON)</li>
-  <li><a href="/start">/start</a></li>
-  <li><a href="/stop">/stop</a></li>
-</ul>`);
+  res.type('html').send('');
 });
 
-app.get('/status', (req, res) => {
+// control endpoints require ADMIN_TOKEN. fail closed if it is not set.
+function requireAdmin(req, res, next) {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) {
+    return res.status(503).type('text/plain').send('admin disabled');
+  }
+  const given = req.get('x-admin-token') || req.query.token;
+  if (given !== expected) {
+    return res.status(404).type('text/plain').send('not found');
+  }
+  next();
+}
+
+app.get('/status', requireAdmin, (req, res) => {
   res.json({
     running: isRunning(),
     pid: isRunning() ? proc.pid : null,
     uptimeMs: startedAt ? Date.now() - startedAt : null,
     restarts,
-    outputDir: OUTPUT_DIR,
     playlist: playlistState(),
     lastLog,
   });
 });
 
-app.get('/start', (req, res) => {
-  res.json({ ...start('http /start'), playlistUrl: '/playlist.m3u8' });
+app.post('/start', requireAdmin, (req, res) => {
+  res.json({ ...start('admin'), playlistUrl: '/playlist.m3u8' });
 });
 
-app.get('/stop', (req, res) => {
+app.post('/stop', requireAdmin, (req, res) => {
   res.json(stop());
 });
 
